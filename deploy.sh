@@ -12,6 +12,6 @@ set -e
 WAR_NAME=$(grep -m1 '<artifactId>' server/pom.xml | sed 's/.*<artifactId>//;s/<.*//' | tr -d '[:space:]')
 
 echo "=== Deploying ${WAR_NAME}.war ==="
-sudo cp game.war "${DEPLOY_PATH}/${WAR_NAME}.war"
-sudo chown game:game "${DEPLOY_PATH}/${WAR_NAME}.war"
+cp game.war "${DEPLOY_PATH}/${WAR_NAME}.war"
+chown game:game "${DEPLOY_PATH}/${WAR_NAME}.war" 2>/dev/null || true
 echo "=== SUCCESS - ${WAR_NAME}.war deployed ==="
