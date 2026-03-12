@@ -8,11 +8,6 @@ set -e
 #   HOST_VAR - env variable name containing target host IP
 #              defaults to STAGING_HOST
 #
-# Examples:
-#   bash deploy.sh                  -> deploys to $STAGING_HOST
-#   bash deploy.sh PREPROD_HOST_1   -> deploys to $PREPROD_HOST_1
-#   bash deploy.sh PROD_HOST_1      -> deploys to $PROD_HOST_1
-#
 # Required env vars:
 #   DEPLOY_PATH   - e.g. /home/game/resin/webapps
 #   DEPLOY_USER   - e.g. ec2-user
@@ -36,6 +31,13 @@ echo "$SSH_KEY" | base64 -d > ~/.ssh/deploy_key
 chmod 600 ~/.ssh/deploy_key
 ssh-keyscan -H "${TARGET_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
 
-echo "=== Deploying ${WAR_NAME}.war to ${TARGET_HOST} (${HOST_VAR}) ==="
-scp -i ~/.ssh/deploy_key game.war "${DEPLOY_USER}@${TARGET_HOST}:${DEPLOY_PATH}/${WAR_NAME}.war"
+SSH_CMD="ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${TARGET_HOST}"
+SCP_CMD="scp -i ~/.ssh/deploy_key"
+
+echo "=== Uploading ${WAR_NAME}.war to ${TARGET_HOST}:/tmp ==="
+$SCP_CMD game.war "${DEPLOY_USER}@${TARGET_HOST}:/tmp/${WAR_NAME}.war"
+
+echo "=== Moving to ${DEPLOY_PATH} ==="
+$SSH_CMD "sudo cp /tmp/${WAR_NAME}.war ${DEPLOY_PATH}/${WAR_NAME}.war && sudo chown game:game ${DEPLOY_PATH}/${WAR_NAME}.war && rm /tmp/${WAR_NAME}.war"
+
 echo "=== SUCCESS - ${WAR_NAME}.war deployed to ${TARGET_HOST}:${DEPLOY_PATH} ==="
