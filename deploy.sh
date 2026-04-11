@@ -35,6 +35,8 @@ SSH_CMD="ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${TARGET_HOST}"
 SCP_CMD="scp -i ~/.ssh/deploy_key"
 
 echo "=== Uploading ${WAR_NAME}.war to ${TARGET_HOST}:/tmp ==="
+# Remove old WAR from /tmp (may have root ownership from previous deploy)
+$SSH_CMD "sudo rm -f /tmp/${WAR_NAME}.war" 2>/dev/null || true
 $SCP_CMD game.war "${DEPLOY_USER}@${TARGET_HOST}:/tmp/${WAR_NAME}.war"
 
 echo "=== Moving to ${DEPLOY_PATH} ==="
