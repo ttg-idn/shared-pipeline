@@ -47,6 +47,15 @@ echo "Repo:             ${REPO}"
 echo "Maven cache dir:  ${CACHE_DIR}"
 echo "Nexus URL:        ${NEXUS_URL}"
 
+# BEGINNING-OF-BUILD chown: scrub any root-owned residue left behind by
+# previous docker runs that predated this wrapper (i.e. before commit 99dfefd).
+# On 2026-05-14/15 every game CI (PoD, RGD, MegaPhoenix, IMK, SantaV, WildWestH5)
+# failed actions/checkout@v4 with EACCES rmdir on .../target/antrun because the
+# container ran as root. The END-OF-BUILD chown below stops new accumulation;
+# this START-OF-BUILD chown evicts the legacy residue so checkout can clean.
+sudo -n chown -R "${RUNNER_UID}:${RUNNER_GID}" "${WORKSPACE}" 2>/dev/null || true
+sudo -n chown -R "${RUNNER_UID}:${RUNNER_GID}" "${CACHE_DIR}" 2>/dev/null || true
+
 docker run --rm \
   -v "${WORKSPACE}:/workspace" \
   -v "${CACHE_DIR}:/root/.m2/repository" \
