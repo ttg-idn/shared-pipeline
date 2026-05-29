@@ -39,6 +39,20 @@ echo "=== Uploading ${WAR_NAME}.war to ${TARGET_HOST}:/tmp ==="
 $SSH_CMD "sudo rm -f /tmp/${WAR_NAME}.war" 2>/dev/null || true
 $SCP_CMD game.war "${DEPLOY_USER}@${TARGET_HOST}:/tmp/${WAR_NAME}.war"
 
+echo "=== Creating backup ==="
+BACKUP_TS=$(date +%Y%m%d_%H%M%S)
+$SSH_CMD "
+  if [ -f ${DEPLOY_PATH}/${WAR_NAME}.war ]; then
+    sudo cp ${DEPLOY_PATH}/${WAR_NAME}.war ${DEPLOY_PATH}/${WAR_NAME}.war.bak.${BACKUP_TS}
+    sudo chown game:game ${DEPLOY_PATH}/${WAR_NAME}.war.bak.${BACKUP_TS}
+    echo 'Backup: ${WAR_NAME}.war.bak.${BACKUP_TS}'
+    # keep last 3 backups, remove older
+    ls -t ${DEPLOY_PATH}/${WAR_NAME}.war.bak.* 2>/dev/null | tail -n +4 | xargs -r sudo rm -f
+  else
+    echo 'No existing WAR to backup'
+  fi
+"
+
 echo "=== Moving to ${DEPLOY_PATH} ==="
 $SSH_CMD "sudo cp /tmp/${WAR_NAME}.war ${DEPLOY_PATH}/${WAR_NAME}.war && sudo chown game:game ${DEPLOY_PATH}/${WAR_NAME}.war && rm /tmp/${WAR_NAME}.war"
 
