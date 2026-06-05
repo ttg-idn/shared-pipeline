@@ -41,13 +41,17 @@ $SCP_CMD game.war "${DEPLOY_USER}@${TARGET_HOST}:/tmp/${WAR_NAME}.war"
 
 echo "=== Creating backup ==="
 BACKUP_TS=$(date +%Y%m%d_%H%M%S)
+# NOTE: the deploy dir (e.g. /home/game/resin/webapps) lives under /home/game,
+# which is mode 700 owned by 'game'. DEPLOY_USER (ec2-user) cannot traverse it,
+# so a plain `[ -f ... ]` test ALWAYS returned false and the backup was never
+# created. Run the existence test + cleanup via sudo so root can see the dir.
 $SSH_CMD "
-  if [ -f ${DEPLOY_PATH}/${WAR_NAME}.war ]; then
+  if sudo test -f ${DEPLOY_PATH}/${WAR_NAME}.war; then
     sudo cp ${DEPLOY_PATH}/${WAR_NAME}.war ${DEPLOY_PATH}/${WAR_NAME}.war.bak.${BACKUP_TS}
     sudo chown game:game ${DEPLOY_PATH}/${WAR_NAME}.war.bak.${BACKUP_TS}
-    echo 'Backup: ${WAR_NAME}.war.bak.${BACKUP_TS}'
-    # keep last 3 backups, remove older
-    ls -t ${DEPLOY_PATH}/${WAR_NAME}.war.bak.* 2>/dev/null | tail -n +4 | xargs -r sudo rm -f
+    echo 'Backup created: ${WAR_NAME}.war.bak.${BACKUP_TS}'
+    # keep the last 3 backups (run as root so it can read the game-owned dir)
+    sudo bash -c 'ls -1t ${DEPLOY_PATH}/${WAR_NAME}.war.bak.* 2>/dev/null | tail -n +4 | xargs -r rm -f'
   else
     echo 'No existing WAR to backup'
   fi
