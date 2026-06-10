@@ -58,6 +58,19 @@ $SSH_CMD "
 "
 
 echo "=== Moving to ${DEPLOY_PATH} ==="
-$SSH_CMD "sudo cp /tmp/${WAR_NAME}.war ${DEPLOY_PATH}/${WAR_NAME}.war && sudo chown game:game ${DEPLOY_PATH}/${WAR_NAME}.war && rm /tmp/${WAR_NAME}.war"
+# Copy the new WAR, then DELETE the old exploded webapp directory so Resin
+# re-expands from the fresh WAR. Without this, Resin keeps serving the stale
+# exploded dir (or, for a brand-new context, never expands the dropped WAR) —
+# the deploy reports success but the new bundle is never served (observed on
+# staging: HTTP 404 after a "successful" deploy). Documented Resin hot-deploy
+# contract: copy WAR *and* remove the exploded dir.
+$SSH_CMD "sudo cp /tmp/${WAR_NAME}.war ${DEPLOY_PATH}/${WAR_NAME}.war && sudo chown game:game ${DEPLOY_PATH}/${WAR_NAME}.war && sudo rm -rf ${DEPLOY_PATH}/${WAR_NAME} && rm /tmp/${WAR_NAME}.war"
+
+echo "=== Waiting for Resin to re-expand ${WAR_NAME}.war (up to ~60s) ==="
+# Non-fatal readiness wait, not a gate — the caller workflow's per-host
+# health-check is the authority on served correctness. sudo test: the deploy
+# dir is under /home/game (mode 700), so ec2-user can't stat it without sudo.
+EXPLODED_DIR="${DEPLOY_PATH}/${WAR_NAME}"
+$SSH_CMD "for i in \$(seq 1 30); do sudo test -d '${EXPLODED_DIR}' && break; sleep 2; done; sudo test -d '${EXPLODED_DIR}' && echo 're-expanded OK' || echo 'WARN: not re-expanded after 60s'" || true
 
 echo "=== SUCCESS - ${WAR_NAME}.war deployed to ${TARGET_HOST}:${DEPLOY_PATH} ==="
